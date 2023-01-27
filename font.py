@@ -12,9 +12,9 @@ def MonogramLoad():
 			Row = bitarray.bitarray(endian = 'little')
 			Row.frombytes(LineInt.to_bytes(1, byteorder = 'little'))
 			CharMatrix.append([int(item) for item in Row.to01()])
-		Dict[Char] = numpy.array(CharMatrix, dtype = numpy.int8)
-	Dict['__tofu__'] = numpy.zeros((12, 8), dtype = numpy.int8)
-	Dict['__tofu__'][3:10, 0:5] = 1
+		Dict[Char] = numpy.array(CharMatrix, dtype = numpy.int8)[:, :-1]
+	Dict['__tofu__'] = numpy.zeros((7, 7), dtype = numpy.int8)
+	Dict['__tofu__'][:, :5] = 1
 	return Dict
 
 def MonogramWriteRow(Row, MonogramDict):
@@ -26,3 +26,5 @@ def MonogramWriteRow(Row, MonogramDict):
 			Chars.append(MonogramDict['__tofu__'])
 	RowMatrix = numpy.concatenate(Chars, axis = 1)
 	return RowMatrix
+
+def MonogramTest(MonogramDict): return numpy.concatenate([MonogramDict[i] for i in MonogramDict if MonogramDict[i][-1].any()], axis = 0)
