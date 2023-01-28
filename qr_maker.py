@@ -21,6 +21,7 @@ from reportlab.lib.units import mm #
 from reportlab.pdfgen import canvas #
 from svglib.svglib import svg2rlg #
 import tqdm #
+import gnupg
 
 # -----=====| LOGGING |=====-----
 
@@ -176,7 +177,7 @@ def MakeQR(TextList, Version, MaskPattern, ErrorCorrection, RunID, BlockNumber, 
 	Matrix = numpy.vectorize(lambda x: int(x))(Matrix)
 	Result = numpy.rot90(numpy.array(Matrix, dtype = numpy.int8))
 	if Odd: Result = numpy.flip(Result, axis = 1)
-	return Result
+	return Result, AlphaString
 
 # ArUco Marker
 def KittyPawprint(ArUcoIndex, Dictionary, SpacingSize):
@@ -242,6 +243,7 @@ def CreatePixelSheets(Text, CharNum, LineNum, ColNum, RowNum, SpacingSize, DotSp
 		Codes.append(OddCode)
 		EvenCode, OddCode = list(), list()
 	PageData = list(more_itertools.sliced(list(more_itertools.sliced(Codes, ColNum)), RowNum))
+	SignableData = list()
 	for PageNumber, Page in enumerate(PageData):
 		# Create page
 		Matrix = numpy.zeros((PageHeight, PageWidth))
@@ -255,7 +257,8 @@ def CreatePixelSheets(Text, CharNum, LineNum, ColNum, RowNum, SpacingSize, DotSp
 				# Create pawprint on the page
 				StartX = (SpacingSize * 2) + (CellSize * Col)
 				StartY = (SpacingSize * 2) + (CellSize * Row)
-				Pawprint = MakeQR(Page[Row][Col], QRVersion, 0, 'L', 'DEAD', 'BEEF', Odd = Col % 2)
+				Pawprint, DataString = MakeQR(Page[Row][Col], QRVersion, 0, 'L', 'DEAD', 'BEEF', Odd = Col % 2)
+				SignableData.append(DataString)
 				Matrix[StartY:StartY + PawSize, StartX:StartX + PawSize] = Pawprint
 			except IndexError:
 				# If there are no codes left
@@ -275,6 +278,10 @@ def CreatePixelSheets(Text, CharNum, LineNum, ColNum, RowNum, SpacingSize, DotSp
 		# Append page
 		Result.append(Matrix)
 	# Return
+	SD = '\n'.join(SignableData)
+	gpg = gnupg.GPG()
+	Signed = gpg.sign(SD, detach=True, clearsign=False, binary=True)
+	print(Signed)
 	return Result
 
 def CreatePDF(SvgPages, OutputFileName, JobName, RunID, PdfLeftMargin, PdfTopMargin, PdfLineSpacing, PdfFontFamily, PdfFontSize, PdfPageHeight, TqdmAscii): # pragma: no cover
